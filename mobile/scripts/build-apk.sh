@@ -30,7 +30,7 @@ fi
 export KS_PASS
 
 "$BT/zipalign" -p -f 4 "$IN" "$TMP/aligned.apk"
-"$BT/apksigner" sign --ks "$KS" --ks-alias "$ALIAS" --ks-pass env:KS_PASS \
+"$BT/apksigner" sign --ks "$KS" --ks-key-alias "$ALIAS" --ks-pass env:KS_PASS \
   --out "$ROOT/$APK_NAME" "$TMP/aligned.apk"
 "$BT/apksigner" verify --verbose "$ROOT/$APK_NAME"
 
