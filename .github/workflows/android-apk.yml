@@ -1,16 +1,14 @@
-
 name: Build Android APK
 
-# Run from Actions ("Run workflow"), or push a tag like v1.0.0
+# Run it from the Actions tab ("Run workflow"), or push a tag like v1.0.0
 # to also publish the APK on the repo's Releases page.
-
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: write   # only used to attach the APK to a Release on tag builds
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -20,13 +18,11 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     env:
       APK_NAME: JARVIS-MARK7.apk
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -39,11 +35,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Setup Android SDK and accept licenses
-      - uses: android-actions/setup-android@v4
-        with:
-          accept-android-sdk-licenses: 'true'
-          log-accepted-android-sdk-licenses: 'false'
+      - name: Prepare Android SDK
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n' >> "$ANDROID_HOME/licenses/android-sdk-license"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" || true
 
       - name: Version name from tag (if any)
         run: |
