@@ -1,14 +1,16 @@
+
 name: Build Android APK
 
-# Run it from the Actions tab ("Run workflow"), or push a tag like v1.0.0
+# Run from Actions ("Run workflow"), or push a tag like v1.0.0
 # to also publish the APK on the repo's Releases page.
+
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
 
 permissions:
-  contents: write   # only used to attach the APK to a Release on tag builds
+  contents: write
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -18,11 +20,13 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     env:
       APK_NAME: JARVIS-MARK7.apk
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +39,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # Setup Android SDK and accept licenses
+      - uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: 'true'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Version name from tag (if any)
         run: |
