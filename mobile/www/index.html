@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>JARVIS MARK 7</title>
+<style>
+  :root { color-scheme: dark; --c: #4fd8ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; color: #cfefff;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom); }
+  .card { width: 100%; max-width: 420px; }
+  h1 { font-size: 22px; letter-spacing: .28em; font-weight: 600; color: var(--c);
+    margin: 0 0 4px; text-align: center; }
+  .sub { text-align: center; opacity: .6; font-size: 13px; margin-bottom: 28px; }
+  label { display: block; font-size: 12px; letter-spacing: .08em; opacity: .7; margin-bottom: 6px; }
+  input { width: 100%; padding: 14px; font-size: 16px; color: #fff; background: #07141a;
+    border: 1px solid #12404f; border-radius: 10px; outline: none; }
+  input:focus { border-color: var(--c); }
+  button { width: 100%; margin-top: 14px; padding: 14px; font-size: 16px; font-weight: 600;
+    color: #00131a; background: var(--c); border: 0; border-radius: 10px; }
+  button.ghost { background: transparent; color: var(--c); border: 1px solid #12404f; margin-top: 10px; }
+  .hint { font-size: 12.5px; line-height: 1.5; opacity: .6; margin-top: 18px; }
+  .hint code { color: var(--c); }
+  #msg { min-height: 20px; margin-top: 12px; font-size: 13px; color: #ff8a8a; text-align: center; }
+  #msg.ok { color: #8affc1; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>JARVIS</h1>
+  <div class="sub">MARK 7</div>
+
+  <label for="url">SERVER ADDRESS</label>
+  <input id="url" type="url" inputmode="url" autocapitalize="off" autocomplete="off"
+         spellcheck="false" placeholder="http://127.0.0.1:3000">
+  <button id="go">Connect</button>
+  <button id="local" class="ghost">Use this phone (Termux)</button>
+  <div id="msg"></div>
+
+  <div class="hint">
+    The app is the interface; the JARVIS server does the work. Run it on this phone in
+    Termux (<code>npm run build &amp;&amp; npm start</code>, then connect to
+    <code>http://127.0.0.1:3000</code>) or enter the HTTPS address of a hosted copy.
+    Press <b>Back</b> on the JARVIS screen to return here and change servers.
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = "jarvis.serverUrl";
+  var input = document.getElementById("url");
+  var msg = document.getElementById("msg");
+  var LOCAL = "http://127.0.0.1:3000";
+
+  function say(t, ok) { msg.textContent = t || ""; msg.className = ok ? "ok" : ""; }
+  function load() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+  function save(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+
+  function normalise(raw) {
+    var v = (raw || "").trim();
+    if (!v) return "";
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
+      var host = v.split("/")[0];
+      var isLocal = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+      v = (isLocal ? "http://" : "https://") + v;
+    }
+    try { var u = new URL(v); if (!/^https?:$/.test(u.protocol)) return ""; return u.href; }
+    catch (e) { return ""; }
+  }
+
+  function reachable(url, ms) {
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, ms);
+    // no-cors: we only need to know that *something* answered.
+    return fetch(url, { mode: "no-cors", signal: ctl.signal, cache: "no-store" })
+      .then(function () { clearTimeout(t); return true; })
+      .catch(function () { clearTimeout(t); return false; });
+  }
+
+  function connect(raw) {
+    var url = normalise(raw);
+    if (!url) { say("Enter a valid address, e.g. http://127.0.0.1:3000"); return; }
+    say("Contacting server…", true);
+    reachable(url, 6000).then(function (ok) {
+      if (!ok) {
+        say("Can't reach " + url + ". Is the JARVIS server running?");
+        return;
+      }
+      save(url);
+      // location.href (not replace) keeps this page in history so Back returns here.
+      window.location.href = url;
+    });
+  }
+
+  document.getElementById("go").onclick = function () { connect(input.value); };
+  document.getElementById("local").onclick = function () { input.value = LOCAL; connect(LOCAL); };
+  input.addEventListener("keydown", function (e) { if (e.key === "Enter") connect(input.value); });
+
+  var saved = load();
+  input.value = saved || "";
+
+  // Auto-connect on a fresh launch only; never when arriving here via Back.
+  var nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+  var viaBack = nav.type === "back_forward";
+  window.addEventListener("pageshow", function (e) { if (e.persisted) say(""); });
+  if (saved && !viaBack) connect(saved);
+})();
+</script>
+</body>
+</html>

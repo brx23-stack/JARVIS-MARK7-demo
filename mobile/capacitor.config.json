@@ -1,0 +1,15 @@
+{
+  "appId": "com.jarvis.mark7",
+  "appName": "JARVIS MARK 7",
+  "webDir": "www",
+  "backgroundColor": "#000000",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#000000"
+  }
+}

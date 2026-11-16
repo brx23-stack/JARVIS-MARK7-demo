@@ -1,0 +1,22 @@
+--- a/lib/orbScene.ts	2026-11-04 18:12:01.000000000 +0000
++++ b/lib/orbScene.ts	2026-11-06 20:36:25.867032669 +0000
+@@ -5,6 +5,7 @@
+ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+ import { ELEMENTS, ELEMENT_BY_SYMBOL, type ElementData } from "./laboratory/elements";
++import { getRealtimeLevel } from "@/lib/realtime/levelBus";
+ import {
+   valenceLimit,
+   formulaOf,
+@@ -1637,7 +1638,10 @@
+       fpsWindowStart = now;
+       updateAutoQuality(now);
+     }
+-    voiceEnergy += (voiceTarget - voiceEnergy) * 0.06;
++    const rtLevel = getRealtimeLevel(); // processed Realtime voice output (AnalyserNode)
++    const rtActive = rtLevel > 0.01;
++    const energyTarget = rtActive ? Math.max(voiceTarget, 0.3 + rtLevel * 0.9) : voiceTarget;
++    voiceEnergy += (energyTarget - voiceEnergy) * (rtActive ? 0.25 : 0.06);
+     const spin = 1 + voiceEnergy * 1.6;
+ 
+     // ——— molecule <-> orb morph ———

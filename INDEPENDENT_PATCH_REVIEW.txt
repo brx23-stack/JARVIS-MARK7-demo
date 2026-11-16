@@ -1,0 +1,52 @@
+JARVIS MARK 7 — Independent Review of Claude Security Patch
+Date: 2026-11-16
+
+SCOPE
+- Original pre-release archive: JARVIS-MARK7_pre-release.zip
+- Candidate patch: jarvis-mark7-security-fixes.zip
+- Claude audit report: JARVIS-MARK7-audit-report.zip
+- The S5 archive was also inventoried for comparison.
+- The original archive was not modified. The candidate was created by applying Claude's patch to a separate extracted copy.
+
+ARCHIVE / PATCH VALIDATION
+- All four uploaded ZIP archives opened successfully and passed ZIP CRC integrity checks.
+- Claude patch contains 14 file diffs.
+- `git apply --check` against the supplied pre-release tree: PASS.
+- Patch applied to a separate working copy: PASS.
+- Candidate archive retains the `JARVIS-MARK7/` project root.
+
+TESTS
+- Original pre-release `npm test`: PASS, 42 tests, 0 failures.
+- Patched candidate `npm test`: PASS, 60 tests, 0 failures.
+- This independently reproduces the 42/60 test counts reported by Claude.
+- Node emitted experimental type-stripping and MODULE_TYPELESS_PACKAGE_JSON warnings; tests still passed.
+- `npm run typecheck`: NOT VERIFIED / FAILED TO RUN CLEANLY in this environment. It exits non-zero with missing Next.js, React and Node type declarations/modules; dependencies are not installed. The environment could not complete dependency installation from the package registry.
+- `npm run build`: NOT VERIFIED. The prebuild plugin-generation step ran, but `next build` could not execute (`next: Permission denied` / no usable installed Next.js executable).
+- `npm audit`, lint, Docker build, PWA/Lighthouse, live providers, voice and live Telegram/Discord were not run.
+
+PATCH FINDINGS
+1. SSRF guard: substantive improvement. `browserFetch` now routes through a custom HTTP(S) fetcher, blocks many private/reserved IPv4/IPv6 destinations, validates redirects, limits response bytes, and adds a timeout. Tests cover common loopback/private destinations, redirects, and body caps.
+2. Autocoder protected paths: case-insensitive checks and canonical existing-path checks improve the guard.
+3. Memory writes: serializes the read-modify-write operation and uses temp-file-plus-rename; tests verify concurrent updates and recovery after a failed write.
+4. Placeholder tokens: short/example placeholder tokens fail closed; tests cover the expected cases.
+5. New/changed API route authentication: only partially robust. `routeAuthProblem()` checks whether source text contains the substring `requireAccess(`. A comment, string literal, dead branch, or unrelated call could satisfy this check without protecting the route. Treat this as a heuristic, not proof of route authentication. It needs AST-based or runtime route-level validation before release.
+
+ADDITIONAL REVIEW NOTES
+- `safeFetchText` uses Node's request timeout option, which is generally an inactivity timeout, not a strict wall-clock deadline. A server that periodically sends data may keep the request alive longer than the stated 10 seconds. Add an explicit total-duration Abort/Timer deadline if a hard overall timeout is required.
+- The destination allowlist deliberately permits an exact hostname when `JARVIS_FETCH_ALLOW_HOSTS` includes it; ensure this is documented as a trust decision, since that hostname may resolve to private addresses.
+- Memory queue is process-local. It protects concurrent calls within one process, but not multiple server processes/instances writing the same JSON file. For multi-process deployment use a database or cross-process locking.
+- Claude's patch does not address the audit's remaining M2 write-tool approval defaults, M3 spoofable X-Forwarded-For rate-limit key, M4 security headers, M6 plaintext memory/learning/evolution stores, or the listed low-severity items.
+- The report's description of local-only voice remains accurate: no real local STT/TTS engine is supplied.
+- No regression is proven by the tests, but the full app could not be built or launched here, so broad integration regressions remain unverified.
+
+VERDICT
+- Patch applicability: PASS.
+- Automated tests: PASS (60/60).
+- Security fixes: materially improved, but not fully release-verified.
+- Full type-check/build/runtime: NOT VERIFIED.
+- Release recommendation: do not call this production-ready yet. Treat the generated ZIP as a patched candidate, not a signed-off release.
+
+RECOMMENDED NEXT STEPS
+1. On a networked development machine, install from the lockfile (`npm ci`) and run `npm run typecheck`, `npm run build`, and `npm audit`.
+2. Replace the substring-based API auth check with robust AST/runtime route checks and add tests proving routes without real authentication are rejected.
+3. Address write-tool approval defaults, trusted-proxy rate limiting, security headers, and encryption-at-rest decisions before public deployment.
